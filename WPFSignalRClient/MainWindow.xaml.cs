@@ -8,14 +8,18 @@ namespace WPFSignalRClient
     /// </summary>
     public partial class MainWindow : Window
     {
-        HubConnection connection;
+        HubConnection hubConnection;
+        HubConnection counterConnection;
+
         public MainWindow()
         {
             InitializeComponent();
 
-            connection = new HubConnectionBuilder().WithUrl("https://localhost:7189/chathub").WithAutomaticReconnect().Build();
+            hubConnection = new HubConnectionBuilder().WithUrl("https://localhost:7189/chathub").WithAutomaticReconnect().Build();
+            counterConnection = new HubConnectionBuilder().WithUrl("https://localhost:7189/counterhub").WithAutomaticReconnect().Build();
 
-            connection.Reconnecting+=(sender) =>
+
+            hubConnection.Reconnecting+=(sender) =>
             {
                 this.Dispatcher.Invoke(() =>
                 {
@@ -25,7 +29,7 @@ namespace WPFSignalRClient
                 return Task.CompletedTask;
             };
 
-            connection.Reconnected += (sender) =>
+            hubConnection.Reconnected += (sender) =>
             {
                 this.Dispatcher.Invoke(() =>
                 {
@@ -35,7 +39,7 @@ namespace WPFSignalRClient
                 });
                 return Task.CompletedTask;
             };
-            connection.Closed += (sender) =>
+            hubConnection.Closed += (sender) =>
             {
                 this.Dispatcher.Invoke(() =>
                 {
@@ -50,7 +54,7 @@ namespace WPFSignalRClient
 
         private async void openConnection_Click(object sender, RoutedEventArgs e)
         {
-            connection.On<string, string>("ReceiveMessage", (user, message) =>
+            hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
             {
                 this.Dispatcher.Invoke(() =>
                 {
@@ -61,7 +65,7 @@ namespace WPFSignalRClient
 
             try
             {
-                await connection.StartAsync();
+                await hubConnection.StartAsync();
                 messages.Items.Add("Connect Started");
                 openConnection.IsEnabled = false;
                 sendMessage.IsEnabled = true;
@@ -69,7 +73,7 @@ namespace WPFSignalRClient
             catch (Exception ex)
             {
                 messages.Items.Add(ex.Message);
-                throw;
+                
             }
         }
 
@@ -77,12 +81,36 @@ namespace WPFSignalRClient
         {
             try
             {
-                await connection.InvokeAsync("SendMessage", "WPF Client", messageInput.Text);
+                await hubConnection.InvokeAsync("SendMessage", "WPF Client", messageInput.Text);
             }
             catch (Exception ex)
             {
                 messages.Items.Add(ex.Message);
-                throw;
+            }
+        }
+
+        private async void openCounter_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await counterConnection.StartAsync();
+                openCounter.IsEnabled = false;
+            }
+            catch (Exception ex)
+            {
+                messages.Items.Add(ex.Message);
+            }
+        }
+
+        private async void incrementCounter_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await counterConnection.InvokeAsync("AddToTotal", "WPF client", 1);
+            }
+            catch (Exception ex)
+            {
+                messages.Items.Add(ex.Message);
             }
         }
     }
